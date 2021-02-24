@@ -5,7 +5,7 @@ from trezor.messages import ButtonRequestType
 from trezor.ui.container import Container
 from trezor.ui.loader import LoaderDanger
 from trezor.ui.qr import Qr
-from trezor.utils import chunks
+from trezor.utils import chunks, chunks_intersperse
 
 from ..components.common import break_path_to_lines
 from ..components.common.confirm import is_confirmed
@@ -28,8 +28,6 @@ if False:
 
     from trezor import wire
     from trezor.messages.ButtonRequest import EnumTypeButtonRequestType
-
-    from ..components.common.text import TextContent
 
 __all__ = (
     "confirm_action",
@@ -117,8 +115,9 @@ async def confirm_action(
 
 # TODO cleanup @ redesign
 async def confirm_wipe(ctx: wire.GenericContext) -> bool:
-    text = Text("Wipe device", ui.ICON_WIPE, ui.RED)
-    text.normal("Do you really want to", "wipe the device?", "")
+    text = Text("Wipe device", ui.ICON_WIPE, ui.RED, new_lines=False)
+    text.normal("Do you really want to wipe the device?\n")
+    text.br()
     text.bold("All data will be lost.")
     return is_confirmed(
         await interact(
@@ -151,15 +150,15 @@ async def confirm_reset_device(ctx: wire.GenericContext, prompt: str) -> bool:
 
 # TODO cleanup @ redesign
 async def confirm_backup(ctx: wire.GenericContext) -> bool:
-    text1 = Text("Success", ui.ICON_CONFIRM, ui.GREEN)
-    text1.bold("New wallet created", "successfully!")
+    text1 = Text("Success", ui.ICON_CONFIRM, ui.GREEN, new_lines=False)
+    text1.bold("New wallet created successfully!\n")
     text1.br_half()
-    text1.normal("You should back up your", "new wallet right now.")
+    text1.normal("You should back up your new wallet right now.")
 
-    text2 = Text("Warning", ui.ICON_WRONG, ui.RED)
-    text2.bold("Are you sure you want", "to skip the backup?")
+    text2 = Text("Warning", ui.ICON_WRONG, ui.RED, new_lines=False)
+    text2.bold("Are you sure you want to skip the backup?\n")
     text2.br_half()
-    text2.normal("You can back up your", "Trezor once, at any time.")
+    text2.normal("You can back up your Trezor once, at any time.")
 
     if is_confirmed(
         await interact(
@@ -210,7 +209,7 @@ def _show_qr(
 
 
 def _split_address(address: str) -> Iterator[str]:
-    return chunks(address, MONO_CHARS_PER_LINE)
+    return chunks_intersperse(address, MONO_CHARS_PER_LINE)
 
 
 def _truncate_hex(
@@ -228,7 +227,7 @@ def _truncate_hex(
             )
         else:
             hex_data = hex_data[: (width * lines - 3)] + "..."
-    return chunks(hex_data, width)
+    return chunks_intersperse(hex_data, width)
 
 
 def _show_address(
@@ -236,9 +235,9 @@ def _show_address(
     desc: str,
     network: str = None,
 ) -> Confirm:
-    text = Text(desc, ui.ICON_RECEIVE, ui.GREEN)
+    text = Text(desc, ui.ICON_RECEIVE, ui.GREEN, new_lines=False)
     if network is not None:
-        text.normal("%s network" % network)
+        text.normal("%s network\n" % network)
     text.mono(*_split_address(address))
 
     return Confirm(text, cancel="QR", cancel_style=ButtonDefault)
@@ -246,8 +245,8 @@ def _show_address(
 
 def _show_xpub(xpub: str, desc: str, cancel: str) -> Paginated:
     pages: List[ui.Component] = []
-    for lines in chunks(list(chunks(xpub, 16)), 5):
-        text = Text(desc, ui.ICON_RECEIVE, ui.GREEN)
+    for lines in chunks(list(chunks_intersperse(xpub, 16)), TEXT_MAX_LINES * 2):
+        text = Text(desc, ui.ICON_RECEIVE, ui.GREEN, new_lines=False)
         text.mono(*lines)
         pages.append(text)
 
@@ -439,8 +438,8 @@ async def confirm_output(
     address: str,
     amount: str,
 ) -> bool:
-    text = Text("Confirm sending", ui.ICON_SEND, ui.GREEN)
-    text.normal(amount + " to")
+    text = Text("Confirm sending", ui.ICON_SEND, ui.GREEN, new_lines=False)
+    text.normal(amount + " to\n")
     text.mono(*_split_address(address))
     return is_confirmed(
         await interact(
@@ -488,10 +487,10 @@ async def confirm_hex(
 async def confirm_total(
     ctx: wire.GenericContext, total_amount: str, fee_amount: str
 ) -> bool:
-    text = Text("Confirm transaction", ui.ICON_SEND, ui.GREEN)
-    text.normal("Total amount:")
+    text = Text("Confirm transaction", ui.ICON_SEND, ui.GREEN, new_lines=False)
+    text.normal("Total amount:\n")
     text.bold(total_amount)
-    text.normal("including fee:")
+    text.normal("\nincluding fee:\n")
     text.bold(fee_amount)
     return is_confirmed(
         await interact(
@@ -503,10 +502,10 @@ async def confirm_total(
 async def confirm_joint_total(
     ctx: wire.GenericContext, spending_amount: str, total_amount: str
 ) -> bool:
-    text = Text("Joint transaction", ui.ICON_SEND, ui.GREEN)
-    text.normal("You are contributing:")
+    text = Text("Joint transaction", ui.ICON_SEND, ui.GREEN, new_lines=False)
+    text.normal("You are contributing:\n")
     text.bold(spending_amount)
-    text.normal("to the total amount:")
+    text.normal("\nto the total amount:\n")
     text.bold(total_amount)
     return is_confirmed(
         await interact(
@@ -535,8 +534,8 @@ async def confirm_metadata(
 async def confirm_replacement(
     ctx: wire.GenericContext, description: str, txid: str
 ) -> bool:
-    text = Text(description, ui.ICON_SEND, ui.GREEN)
-    text.normal("Confirm transaction ID:")
+    text = Text(description, ui.ICON_SEND, ui.GREEN, new_lines=False)
+    text.normal("Confirm transaction ID:\n")
     text.mono(*_truncate_hex(txid, TEXT_MAX_LINES - 1))
     return is_confirmed(
         await interact(
@@ -551,17 +550,18 @@ async def confirm_modify_fee(
     user_fee_change: str,
     total_fee_new: str,
 ) -> bool:
-    text = Text("Fee modification", ui.ICON_SEND, ui.GREEN)
+    text = Text("Fee modification", ui.ICON_SEND, ui.GREEN, new_lines=False)
     if sign == 0:
-        text.normal("Your fee did not change.")
+        text.normal("Your fee did not change.\n")
     else:
         if sign < 0:
-            text.normal("Decrease your fee by:")
+            text.normal("Decrease your fee by:\n")
         else:
-            text.normal("Increase your fee by:")
+            text.normal("Increase your fee by:\n")
         text.bold(user_fee_change)
+        text.br()
     text.br_half()
-    text.normal("Transaction fee:")
+    text.normal("Transaction fee:\n")
     text.bold(total_fee_new)
     return is_confirmed(
         await interact(ctx, HoldToConfirm(text), "modify_fee", ButtonRequestType.SignTx)
@@ -588,15 +588,11 @@ async def confirm_coinjoin(
 async def confirm_sign_identity(
     ctx: wire.GenericContext, proto: str, identity: str, challenge_visual: Optional[str]
 ) -> bool:
-    lines: List[TextContent] = []
+    text = Text("Sign %s" % proto, new_lines=False)
     if challenge_visual:
-        lines.append(challenge_visual)
-
-    lines.append(ui.MONO)
-    lines.extend(chunks(identity, 18))
-
-    text = Text("Sign %s" % proto)
-    text.normal(*lines)
+        text.normal(challenge_visual)
+        text.br()
+    text.mono(*chunks_intersperse(identity, 18))
     return is_confirmed(
         await interact(ctx, Confirm(text), "sign_identity", ButtonRequestType.Other)
     )
@@ -610,8 +606,8 @@ async def confirm_signverify(
         font = ui.MONO
         br_type = "verify_message"
 
-        text = Text(header)
-        text.bold("Confirm address:")
+        text = Text(header, new_lines=False)
+        text.bold("Confirm address:\n")
         text.mono(*_split_address(address))
         if not is_confirmed(
             await interact(ctx, Confirm(text), br_type, ButtonRequestType.Other)
