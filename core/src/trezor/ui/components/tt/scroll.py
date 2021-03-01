@@ -247,6 +247,9 @@ def paginate_text(
     icon_color: int = ui.ORANGE_ICON,
     break_words: bool = False,
 ) -> Union[Confirm, Paginated]:
+    return paginate_paragraphs(
+        [(font, text)], header, header_icon, icon_color, break_words
+    )
     span = Span(text, 0, font, break_words=break_words)
     if span.count_lines() <= TEXT_MAX_LINES:
         result = Text(
